@@ -259,29 +259,32 @@ if __name__ == '__main__':
 
             # get angle and rotation direction
             angle, clockwise = 0, True
-            if edge_code:   # modify only when edge code 1= 0
+            if edge_code:   # modify only when edge code != 0
                 dx, dy = edge_vertices[1]
                 cos_angle = dx / edge_length * -edge_code
                 angle = np.arccos(cos_angle)
                 # clockwise in x,y coordinates : right, down
                 clockwise = dy < 0 if edge_code == -1 else not dy < 0
-
             # print(f"angel, clockwise: {angle}, {clockwise}")
 
-            print()
+            # rotate vertices by angle bool(clockwise)
+            # todo not ok for tile_right, side 1
+            vertices_std = [edge_vertices[0], EC_STD_VEC[0]]
+            if edge_code:   # modify only when edge code != 0
+                rotation = rot_mat_2D(angle)
+                factor = 1000 / edge_length
+                vertices_std = [edge_vertices[0]]
+                for v in edge_vertices[1:]:
+                    v_std = rotation @ v
+                    v_std *= factor
+                    vertices_std.append(np.rint(v_std))
 
+            print(f"vertices std: {vertices_std}")
+
+            print()
             if DRAW:
                 img = draw_edge_points_on_img_bw()
                 images.append(img)
-
-        #     rotation = rot_mat_2D(angle)
-        #     vertices = []
-        #     for e in ep[i]:
-        #         v = e - ep[i][0]
-        #         v_rot = rotation @ v
-        #         print(v, v_rot)
-        #         vertices.append(v_rot)
-        #     print()
 
     # plot_to_pdf
     if DRAW:
