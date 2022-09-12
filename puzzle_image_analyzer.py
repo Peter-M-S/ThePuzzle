@@ -15,6 +15,7 @@ SHOW = False
 SIDE_COLOR = {0: (255, 0, 0), 1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 255, 0), "V": (128, 128, 128)}
 BOW_COLOR = {1: 255, -1: 0}
 SIDES = [0, 1, 2, 3]  # index of edges top, right, down, left
+EC_STD_VEC = {1: np.array([-1000, 0]), -1: np.array([1000, 0]), 0: np.array([1000, 0])}
 
 
 def file_type_list(path, ending=""):
@@ -127,7 +128,7 @@ def draw_edge_points_on_img_bw():
             cv2.circle(img, e, 10, SIDE_COLOR[side], -1)
     for idx in range(0, len(ep), 2):
         thick = 1 if idx else 5
-        cv2.line(img, ep[idx], ep[idx+1], SIDE_COLOR[side], thick)
+        cv2.line(img, ep[idx], ep[idx + 1], SIDE_COLOR[side], thick)
     cv2.line(img, inner_parallel[0], inner_parallel[1], SIDE_COLOR[side], 1)
     cv2.line(img, outer_parallel[0], outer_parallel[1], SIDE_COLOR[side], 1)
 
@@ -142,7 +143,7 @@ def draw_edge_points_on_img_bw():
 
 def angle_to_side_vector(p0, p1, side_unit_vec):
     v1_u = unit_vector(p0, p1)
-    return np.arccos(np.clip(np.dot(v1_u, side_unit_vec), -1.0, 1.0))
+    return np.arccos(np.clip(np.dot(v1_u, side_unit_vec), -1.0, 1.0)), True
 
 
 def rot_mat_2D(theta):
@@ -165,7 +166,7 @@ if __name__ == '__main__':
 
         for side in SIDES:
             print(f"side: {side}")
-            img = np.rot90(img_raw, k=side)     # CCW rotation
+            img = np.rot90(img_raw, k=side)  # CCW rotation
             corners = cv2.goodFeaturesToTrack(img, len(SIDES), 0.1, 600)
             corners = np.int0(corners)
             assert len(corners) == len(SIDES)
@@ -216,14 +217,14 @@ if __name__ == '__main__':
             has_black = w / len(coordinates_yx) < 0.95
             outer_bow = has_black
 
-            print(f"inner, outer: {inner_bow}, {outer_bow}")
+            # print(f"inner, outer: {inner_bow}, {outer_bow}")
             edge_code = 0
             if inner_bow != outer_bow:
-                edge_code = 1 if inner_bow else -1      # y-direction of bow
-            print(f" edge code: {edge_code}")
+                edge_code = 1 if inner_bow else -1  # y-direction of bow
+            print(f"edge code: {edge_code}")
 
             if edge_code == 1:
-                ep[0], ep[1] = ep[1], ep[0]             # swap start and end of edge
+                ep[0], ep[1] = ep[1], ep[0]  # swap start and end of edge
             print(f"ep: {ep}")
 
             # find tips of bows
@@ -235,7 +236,7 @@ if __name__ == '__main__':
             # else:
             #     p_default = np.array([0, 0])
             #     ep.extend([p_default, p_default])
-            print(f"edge_points: {len(ep)}")
+            # print(f"edge_points: {len(ep)}")
 
             # find sides from tip of bows
             if edge_code:
@@ -248,18 +249,28 @@ if __name__ == '__main__':
                 p4, p5 = find_max_dist_of_color(p3, p_stop, img_bw, vec, col)
                 p6, p7 = find_max_dist_of_color(p3, p_stop, img_bw, -vec, col)
                 ep.extend([p4, p5, p6, p7])
-            # else:
-            #     p_default = np.array([0, 0])
-            #     ep.extend([p_default] * 4)
-            print(f"edge_points: {len(ep)}")
+
+            # print(f"edge_points: {len(ep)}")
 
             # create list of vertices
             if edge_code:
                 # hard coded selection of points
-                edge_vertices = [p-ep[0] for p in [ep[0], ep[7], ep[3], ep[5], ep[1]]]
+                edge_vertices = [p - ep[0] for p in [ep[0], ep[1], ep[7], ep[3], ep[5]]]
             else:
                 edge_vertices = [p - ep[0] for p in ep]
             print(f"vertices: {edge_vertices}")
+
+            # only for edge_code != 0
+            is_dy_neg = edge_vertices[1][1] < 0
+            if edge_code:   # not 0
+                cos_angle = edge_vertices[1][0] / edge_length * -edge_code
+                clockwise = is_dy_neg if edge_code == -1 else not is_dy_neg  # clockwise on x,y : right, down
+                angle = np.arccos(cos_angle)
+            else:
+                angle, clockwise = 0, True
+
+            print(f"angel, clockwise: {angle}, {clockwise}")
+
             print()
 
             if DRAW:
@@ -281,7 +292,7 @@ if __name__ == '__main__':
         #
         # for i in SIDES:
         #
-        #     angle, cw = angle_to_side_vector(ep[i][0], ep[i][1], side_unit_vectors[i])
+        #
         #     rotation = rot_mat_2D(angle)
         #     vertices = []
         #     for e in ep[i]:
@@ -294,4 +305,3 @@ if __name__ == '__main__':
     # plot_to_pdf
     if DRAW:
         plot_to_pdf(images)
-
