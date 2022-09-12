@@ -10,6 +10,8 @@ import time
 
 DRAW = True
 # DRAW = False
+# SHOW = True
+SHOW = False
 EDGE_COLOR = {0: (255, 0, 0), 1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 255, 0)}
 BOW_COLOR = {1: 255, -1: 0}
 SIDES = [0, 1, 2, 3]  # index of edges top, right, down, left
@@ -123,15 +125,15 @@ def draw_edge_points_on_img_bw():
     for e in ep:
         if edge_code:
             cv2.circle(img, e, 10, EDGE_COLOR[side], -1)
-    cv2.line(img, ep[0], ep[1], EDGE_COLOR[side], 5)
+    for idx in range(0, len(ep), 2):
+        thick = 1 if idx else 5
+        cv2.line(img, ep[idx], ep[idx+1], EDGE_COLOR[side], thick)
     cv2.line(img, inner_parallel[0], inner_parallel[1], EDGE_COLOR[side], 1)
     cv2.line(img, outer_parallel[0], outer_parallel[1], EDGE_COLOR[side], 1)
-    cv2.line(img, ep[2], ep[3], EDGE_COLOR[side], 1)
-    cv2.line(img, ep[4], ep[5], EDGE_COLOR[side], 1)
-    cv2.line(img, ep[6], ep[7], EDGE_COLOR[side], 1)
 
-    # plt.imshow(img, cmap="Greys_r")
-    # plt.show()
+    if SHOW:
+        plt.imshow(img, cmap="Greys_r")
+        plt.show()
     return img
 
 
@@ -220,7 +222,6 @@ if __name__ == '__main__':
             if edge_code == 1:
                 ep[0], ep[1] = ep[1], ep[0]             # swap start and end of edge
             print(f"ep: {ep}")
-            print()
 
             # find tips of bows
             if edge_code:
@@ -228,9 +229,9 @@ if __name__ == '__main__':
                 col = BOW_COLOR[edge_code]
                 p2, p3 = find_max_dist_of_color(ep[0], ep[1], img_bw, vec, col)
                 ep.extend([p2, p3])
-            else:
-                p_default = np.array([0, 0])
-                ep.extend([p_default, p_default])
+            # else:
+            #     p_default = np.array([0, 0])
+            #     ep.extend([p_default, p_default])
             print(f"edge_points: {len(ep)}")
 
             # find sides from tip of bows
@@ -244,10 +245,19 @@ if __name__ == '__main__':
                 p4, p5 = find_max_dist_of_color(p3, p_stop, img_bw, vec, col)
                 p6, p7 = find_max_dist_of_color(p3, p_stop, img_bw, -vec, col)
                 ep.extend([p4, p5, p6, p7])
-            else:
-                p_default = np.array([0, 0])
-                ep.extend([p_default] * 4)
+            # else:
+            #     p_default = np.array([0, 0])
+            #     ep.extend([p_default] * 4)
             print(f"edge_points: {len(ep)}")
+
+            # create list of vertices
+            if edge_code:
+                # hard coded selection of points
+                edge_vertices = [p-ep[0] for p in [ep[0], ep[7], ep[3], ep[5], ep[1]]]
+            else:
+                edge_vertices = [p - ep[0] for p in ep]
+            print(f"vertices: {edge_vertices}")
+            print()
 
             if DRAW:
                 img = draw_edge_points_on_img_bw()
