@@ -12,7 +12,7 @@ DRAW = True
 # DRAW = False
 # SHOW = True
 SHOW = False
-EDGE_COLOR = {0: (255, 0, 0), 1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 255, 0)}
+SIDE_COLOR = {0: (255, 0, 0), 1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 255, 0), "V": (128, 128, 128)}
 BOW_COLOR = {1: 255, -1: 0}
 SIDES = [0, 1, 2, 3]  # index of edges top, right, down, left
 
@@ -124,12 +124,15 @@ def draw_edge_points_on_img_bw():
 
     for e in ep:
         if edge_code:
-            cv2.circle(img, e, 10, EDGE_COLOR[side], -1)
+            cv2.circle(img, e, 10, SIDE_COLOR[side], -1)
     for idx in range(0, len(ep), 2):
         thick = 1 if idx else 5
-        cv2.line(img, ep[idx], ep[idx+1], EDGE_COLOR[side], thick)
-    cv2.line(img, inner_parallel[0], inner_parallel[1], EDGE_COLOR[side], 1)
-    cv2.line(img, outer_parallel[0], outer_parallel[1], EDGE_COLOR[side], 1)
+        cv2.line(img, ep[idx], ep[idx+1], SIDE_COLOR[side], thick)
+    cv2.line(img, inner_parallel[0], inner_parallel[1], SIDE_COLOR[side], 1)
+    cv2.line(img, outer_parallel[0], outer_parallel[1], SIDE_COLOR[side], 1)
+
+    for v in edge_vertices:
+        cv2.line(img, ep[0], ep[0] + v, SIDE_COLOR["V"], 3)
 
     if SHOW:
         plt.imshow(img, cmap="Greys_r")
