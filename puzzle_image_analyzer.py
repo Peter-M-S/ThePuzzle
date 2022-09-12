@@ -155,6 +155,7 @@ def rot_mat_2D(theta):
 
 
 if __name__ == '__main__':
+    start_time = time.perf_counter()
 
     images = []
 
@@ -183,13 +184,13 @@ if __name__ == '__main__':
             poly = points_to_quad(poly)
 
             ep: list = [np.array(poly[2]), np.array(poly[1])]
-            print(f"ep: {ep}")
+            # print(f"ep: {ep}")
 
             edge_length = np.linalg.norm(ep[1] - ep[0])
             # print(edge_length)
 
             edge_normal_ccw = normal_vector_ccw(ep[0], ep[1])
-            print(f"edge normal ccw: {edge_normal_ccw}")
+            # print(f"edge normal ccw: {edge_normal_ccw}")
 
             # parallels (0.1*len), both times in positive x
             offset = edge_normal_ccw * edge_length * 0.1
@@ -225,7 +226,7 @@ if __name__ == '__main__':
 
             if edge_code == 1:
                 ep[0], ep[1] = ep[1], ep[0]  # swap start and end of edge
-            print(f"ep: {ep}")
+            # print(f"ep: {ep}")
 
             # find tips of bows
             if edge_code:
@@ -233,9 +234,6 @@ if __name__ == '__main__':
                 col = BOW_COLOR[edge_code]
                 p2, p3 = find_max_dist_of_color(ep[0], ep[1], img_bw, vec, col)
                 ep.extend([p2, p3])
-            # else:
-            #     p_default = np.array([0, 0])
-            #     ep.extend([p_default, p_default])
             # print(f"edge_points: {len(ep)}")
 
             # find sides from tip of bows
@@ -249,27 +247,26 @@ if __name__ == '__main__':
                 p4, p5 = find_max_dist_of_color(p3, p_stop, img_bw, vec, col)
                 p6, p7 = find_max_dist_of_color(p3, p_stop, img_bw, -vec, col)
                 ep.extend([p4, p5, p6, p7])
-
             # print(f"edge_points: {len(ep)}")
 
             # create list of vertices
             if edge_code:
-                # hard coded selection of points
+                # todo check to avoid hard-coded selection of points
                 edge_vertices = [p - ep[0] for p in [ep[0], ep[1], ep[7], ep[3], ep[5]]]
             else:
                 edge_vertices = [p - ep[0] for p in ep]
             print(f"vertices: {edge_vertices}")
 
-            # only for edge_code != 0
-            is_dy_neg = edge_vertices[1][1] < 0
-            if edge_code:   # not 0
-                cos_angle = edge_vertices[1][0] / edge_length * -edge_code
-                clockwise = is_dy_neg if edge_code == -1 else not is_dy_neg  # clockwise on x,y : right, down
+            # get angle and rotation direction
+            angle, clockwise = 0, True
+            if edge_code:   # modify only when edge code 1= 0
+                dx, dy = edge_vertices[1]
+                cos_angle = dx / edge_length * -edge_code
                 angle = np.arccos(cos_angle)
-            else:
-                angle, clockwise = 0, True
+                # clockwise in x,y coordinates : right, down
+                clockwise = dy < 0 if edge_code == -1 else not dy < 0
 
-            print(f"angel, clockwise: {angle}, {clockwise}")
+            # print(f"angel, clockwise: {angle}, {clockwise}")
 
             print()
 
@@ -277,22 +274,6 @@ if __name__ == '__main__':
                 img = draw_edge_points_on_img_bw()
                 images.append(img)
 
-        # exit()
-        # convert edge data to normalised edge
-        # picture size = 2000, 2000
-        # corners = [1500, 1500], [1500, 500], [500, 500], [500, 1500]
-        # convert edge_points to vertices form corner
-        # get angle of edge_line
-        # rot_edge_points(angle)
-        # scale edge_points to edge_line = 1000
-        # pin edge_points to corners
-
-        # side_unit_vectors = [np.array([0, -1]), np.array([-1, 0]), np.array([0, 1]), np.array([1, 0])]
-        # side_normal_vectors = [np.array([1, 0]), np.array([0, -1]), np.array([-1, 0]), np.array([0, 1])]
-        #
-        # for i in SIDES:
-        #
-        #
         #     rotation = rot_mat_2D(angle)
         #     vertices = []
         #     for e in ep[i]:
@@ -305,3 +286,6 @@ if __name__ == '__main__':
     # plot_to_pdf
     if DRAW:
         plot_to_pdf(images)
+
+    end_time = time.perf_counter()-start_time
+    print(end_time)
