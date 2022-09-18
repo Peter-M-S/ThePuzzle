@@ -13,8 +13,8 @@ SHOW = False
 
 THRESHOLD = 25
 PADDING = 0.1
-FRAMEFACTOR = 0.2
-STEPFACTOR = 0.25
+FRAMEFACTOR = 1/6
+STEPFACTOR = 1/5
 CORNERFACTOR_MAX = 0.25 * 1.1
 CORNERFACTOR_MIN = 0.25 * 0.9
 BLACK = 0
@@ -62,9 +62,52 @@ def plot_to_pdf(images_list):
     # plt.show()
 
 
-def find_my_corners(img_bw):
+def find_my_corners(img_bw_clip):
     corners = []
     rims = []
+    rows, cols = img_bw_clip.shape
+
+    # initialize frame
+    top, left = 0, 0
+    frame_size = min(round(rows * FRAMEFACTOR), round(cols * FRAMEFACTOR))
+    step = round(frame_size * STEPFACTOR)
+
+    frame = Frame((top, left), (frame_size, frame_size))
+
+    blacks_max = frame.total * CORNERFACTOR_MAX
+    blacks_min = frame.total * CORNERFACTOR_MIN
+
+    while frame:
+        # evaluate img_bw in frame
+        blacks = 0
+        too_much_blacks = False
+        for r, c in frame.points:
+            if img_bw_clip[r][c] == BLACK:
+                blacks += 1
+            if blacks > blacks_max:
+                too_much_blacks = True
+                break
+        if blacks_min < blacks and not too_much_blacks:  # possible corner
+            # print(round(blacks / frame.total * 100, 1))
+            corners.append(frame.center)
+            rims.append([frame.start, frame.end])
+
+        # move frame to next position
+        frame = frame.move_frame_in_array(img_bw_clip, step)
+
+    return corners, rims
+
+
+def read_file_to_bw(filepath, threshold=THRESHOLD):
+    img = cv2.imread(filepath)
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_bw = img_gray
+    img_bw[img_gray <= threshold] = BLACK
+    img_bw[img_gray > threshold] = WHITE
+    return img_bw
+
+
+def clip_to_padding(img_bw):
     rows, cols = img_bw.shape
     # print(img_bw.shape)
 
@@ -100,52 +143,8 @@ def find_my_corners(img_bw):
     right = min(cols - 1, right + padding_cols)
 
     red_img_bw = img_bw[top:bottom + 1, left:right + 1]
-    rows, cols = red_img_bw.shape
-
-    if SHOW:
-        plt.imshow(red_img_bw, cmap="Greys_r")
-        plt.show()
-
-    # initialize frame
-    top, left = 0, 0
-    frame_size = min(round(rows * FRAMEFACTOR), round(cols * FRAMEFACTOR))
-    step = round(frame_size * STEPFACTOR)
-
-    frame = Frame((top, left), (frame_size, frame_size))
-
-    # print(frame_size, step)
-
-    blacks_max = frame.total * CORNERFACTOR_MAX
-    blacks_min = frame.total * CORNERFACTOR_MIN
-
-    while frame:
-        # evaluate img_bw in frame
-        blacks = 0
-        too_much_blacks = False
-        for r, c in frame.points:
-            if red_img_bw[r][c] == BLACK:
-                blacks += 1
-            if blacks > blacks_max:
-                too_much_blacks = True
-                break
-        if blacks_min < blacks and not too_much_blacks:  # possible corner
-            # print(round(blacks / frame.total * 100, 1))
-            corners.append(frame.center)
-            rims.append([frame.start, frame.end])
-
-        # move frame to next position
-        frame = frame.move_frame_in_array(red_img_bw, step)
-
-    return red_img_bw, corners, rims
-
-
-def read_file_to_bw(filepath, threshold=THRESHOLD):
-    img = cv2.imread(filepath)
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_bw = img_gray
-    img_bw[img_gray <= threshold] = BLACK
-    img_bw[img_gray > threshold] = WHITE
-    return img_bw
+    
+    return red_img_bw
 
 
 if __name__ == '__main__':
@@ -162,11 +161,15 @@ if __name__ == '__main__':
         if SHOW:
             plt.imshow(img_bw, cmap="Greys_r")
             plt.show()
+            
+        img_bw_clip = clip_to_padding(img_bw)
+        if SHOW:
+            plt.imshow(img_bw_clip, cmap="Greys_r")
+            plt.show()
 
-        img_bw, corners, rims = find_my_corners(img_bw)
+        corners, rims = find_my_corners(img_bw_clip)
 
-        img = draw_corners_on_img(img_bw, corners, rims)
-
+        img = draw_corners_on_img(img_bw_clip, corners, rims)
         if SHOW:
             plt.imshow(img, cmap="Greys_r")
             plt.show()
