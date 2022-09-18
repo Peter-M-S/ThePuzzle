@@ -10,12 +10,13 @@ import time
 
 DRAW = True
 # DRAW = False
-# SHOW = True
-SHOW = False
+SHOW = True
+# SHOW = False
+RESOLUTION = 1_000
 SIDE_COLOR = {0: (255, 0, 0), 1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 255, 0), "V": (128, 128, 128)}
 BOW_COLOR = {1: 255, -1: 0}
 SIDES = [0, 1, 2, 3]  # index of edges top, right, down, left
-EC_STD_VEC = {1: np.array([-1000, 0]), -1: np.array([1000, 0]), 0: np.array([1000, 0])}
+EC_STD_VEC = {1: np.array([-RESOLUTION, 0]), -1: np.array([RESOLUTION, 0]), 0: np.array([RESOLUTION, 0])}
 
 
 def file_type_list(path, ending=""):
@@ -140,17 +141,30 @@ def draw_edge_points_on_img_bw():
         plt.show()
     return img
 
+def draw_corners_on_img(img, corners):
+    # draw rgb-lines on bw_image
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+    for c in corners:
+            cv2.circle(img, *c, 10, SIDE_COLOR[side], -1)
+
+    plt.imshow(img, cmap="Greys_r")
+    plt.show()
+
 
 def angle_to_side_vector(p0, p1, side_unit_vec):
     v1_u = unit_vector(p0, p1)
     return np.arccos(np.clip(np.dot(v1_u, side_unit_vec), -1.0, 1.0)), True
 
 
-def rot_mat_2D(theta):
+def rot_mat_2D(theta, clockwise):
     # theta in radiant
     # rotation anti-clockwise
     c, s = np.cos(theta), np.sin(theta)
-    R = np.array(((c, -s), (s, c)))
+    if clockwise:
+        R = np.array(((c, -s), (s, c)))
+    else:
+        R = np.array(((c, s), (-s, c)))
     return R
 
 
@@ -158,9 +172,11 @@ if __name__ == '__main__':
     start_time = time.perf_counter()
 
     images = []
+    pieces = []
 
-    for f in file_type_list(".", "png"):
+    for f in file_type_list(".", "jpg"):
         print(f"file: {f}")
+        pieces.append(f[:-4])
 
         img_raw = cv2.imread(f, cv2.IMREAD_GRAYSCALE)
         # images.append(img_raw)
@@ -170,8 +186,9 @@ if __name__ == '__main__':
             img = np.rot90(img_raw, k=side)  # CCW rotation
             corners = cv2.goodFeaturesToTrack(img, len(SIDES), 0.1, 600)
             corners = np.int0(corners)
-            assert len(corners) == len(SIDES)
-
+            draw_corners_on_img(img, corners)
+            # assert len(corners) == len(SIDES)
+            continue
             img_bw = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
             # keep img_bw clean for analysing
 
@@ -259,7 +276,7 @@ if __name__ == '__main__':
 
             # get angle and rotation direction
             angle, clockwise = 0, True
-            if edge_code:   # modify only when edge code != 0
+            if edge_code:  # modify only when edge code != 0
                 dx, dy = edge_vertices[1]
                 cos_angle = dx / edge_length * -edge_code
                 angle = np.arccos(cos_angle)
@@ -268,27 +285,40 @@ if __name__ == '__main__':
             # print(f"angel, clockwise: {angle}, {clockwise}")
 
             # rotate vertices by angle bool(clockwise)
-            # todo not ok for tile_right, side 1
             vertices_std = [edge_vertices[0], EC_STD_VEC[0]]
-            if edge_code:   # modify only when edge code != 0
-                rotation = rot_mat_2D(angle)
-                factor = 1000 / edge_length
+            if edge_code:  # modify only when edge code != 0
+                rotation = rot_mat_2D(angle, clockwise)
+                factor = RESOLUTION / edge_length
                 vertices_std = [edge_vertices[0]]
                 for v in edge_vertices[1:]:
                     v_std = rotation @ v
                     v_std *= factor
                     vertices_std.append(np.rint(v_std))
-
             print(f"vertices std: {vertices_std}")
+
+            # convert vertices to edge code
+            edge_code = str(edge_code)
+            for p in vertices_std[2:]:
+                for x in p:
+                    edge_code = " ".join([edge_code, str(int(x))])
+
+            print(f"edge_code: {edge_code}")
+            pieces.append(edge_code)
 
             print()
             if DRAW:
                 img = draw_edge_points_on_img_bw()
                 images.append(img)
 
+    with open("puzzle_pieces.txt", "w") as f:
+        for i, line in enumerate(pieces):
+            if i and i % 5 == 0:
+                f.write("\n")
+            f.write(line + "\n")
+
+    end_time = time.perf_counter() - start_time
+    print(end_time)
+
     # plot_to_pdf
     if DRAW:
         plot_to_pdf(images)
-
-    end_time = time.perf_counter()-start_time
-    print(end_time)
