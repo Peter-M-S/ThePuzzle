@@ -11,7 +11,7 @@ class Frame:
         self.top, self.left = top_left              # index of first row, col
         self.height, self.width = height_width      # amount of rows cols
         self.points = self.get_points()
-        # self.center = self.get_center()
+
 
     @property
     def bottom(self):
@@ -32,9 +32,13 @@ class Frame:
         return r, c
 
     @property
-    def rim(self):
-        rim = set([(r, c) for r, c in self.points if r in [self.top or self.bottom] and c in [self.left or self.right]])
-        return rim
+    def start(self):
+        return self.top, self.left
+    
+    @property
+    def end(self):
+        return self.bottom, self.right
+
 
     def get_points(self):
         points = set()
@@ -50,20 +54,20 @@ class Frame:
 
         if self.right == r_max:               # frame at right end?
 
-            if self.bottom == b_max:             # frame at bottom end?
+            if self.bottom == b_max:          # frame at bottom end?
                 return False                  # no move
 
-            if self.bottom + step > b_max:       # if next step gets over b_max, shorten step
+            if self.bottom + step > b_max:    # if next step gets over b_max, shorten step
                 step = b_max - self.bottom
 
             self.top = self.top + step        # move frame starting row step down
             self.left = 0
-            self.points = self.get_points()   # make new frame starting at (new_t_row, 0)
+            self.points = self.get_points()   # make new point set starting at (new_t_row, 0)
             return self
 
         else:
 
-            if self.right + step > r_max:
+            if self.right + step > r_max:     # if next step gets over b_max, shorten step
                 step = r_max - self.right
 
             for r in range(self.top, self.top + self. height):    # move each row of frame step*1 col to right

@@ -8,6 +8,19 @@ import time
 from my_frames import Frame
 
 
+# SHOW = True
+SHOW = False
+
+THRESHOLD = 25
+PADDING = 0.1
+FRAMEFACTOR = 0.2
+STEPFACTOR = 0.25
+CORNERFACTOR_MAX = 0.25 * 1.1
+CORNERFACTOR_MIN = 0.25 * 0.9
+BLACK = 0
+WHITE = 255
+
+
 def file_type_list(path, ending=""):
     # returns a list of files of the "." + ending type in path
     # if ending = "", return all types?
@@ -22,15 +35,15 @@ def file_type_list(path, ending=""):
 def draw_corners_on_img(img, corners, rims):
     # draw rgb-lines on bw_image
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    w, h, d = img.shape
+    radius = round(min(w, h)/35)
 
     for c in corners:
-        cv2.circle(img, (c[1], c[0]), 40, (255, 0, 0), -1)
+        cv2.circle(img, (c[1], c[0]), radius, (255, 0, 0), -1)
 
     for r in rims:
-        cv2.rectangle(img, (r[0][1], r[0][0]), (r[1][1], r[1][0]), (0, 0, 255), 5)
+        cv2.rectangle(img, (r[0][1], r[0][0]), (r[1][1], r[1][0]), (0, 0, 255), int(radius/10))
 
-    plt.imshow(img, cmap="Greys_r")
-    plt.show()
     return img
 
 
@@ -52,80 +65,87 @@ def plot_to_pdf(images_list):
 def find_my_corners(img_bw):
     corners = []
     rims = []
-    rows, cols = len(img_bw), len(img_bw[0])
-    print(rows, cols)
+    rows, cols = img_bw.shape
+    # print(img_bw.shape)
 
-    # clip img to no full white lines
+    # clip img_bw near to black
     top = 0
-    bottom = rows-1
+    bottom = rows - 1
     for i, r in enumerate(img_bw):
-        if any(c == 0 for c in r):
+        if any(c == BLACK for c in r):
             top = i
             break
-    for i in range(1, len(img_bw)):
-        if any(c == 0 for c in img_bw[-i]):
+    for i in range(1, rows):
+        if any(c == BLACK for c in img_bw[-i]):
             bottom = rows - i
             break
 
     left = cols
-    for r in img_bw[top:bottom+1]:
+    for r in img_bw[top:bottom + 1]:
         for i, c in enumerate(r):
-            if c == 0:
+            if c == BLACK:
                 left = min(i, left)
                 break
     right = 0
-    for r in img_bw[top:bottom+1]:
+    for r in img_bw[top:bottom + 1]:
         for i in range(1, cols):
-            if r[-i] == 0:
+            if r[-i] == BLACK:
                 right = max(cols - i, right)
                 break
 
-    # add half_frame to each side
-    frame_cols, frame_rows = int(rows/5), int(cols/5)
-    top = max(0, top - round(frame_rows/2))
-    bottom = min(rows-1, bottom + round(frame_rows/2))
-    left = max(0, left - round(frame_cols/2))
-    right = min(cols-1, cols + round(frame_cols/2))
-    print(top, bottom)
-    print(left, right)
-    red_img_bw = []
-    for r in range(top, bottom+1):
-        temp = []
-        for c in range(left, right+1):
-            temp.append(img_bw[r][c])
-        red_img_bw.append(temp)
+    padding_rows, padding_cols = round(rows * PADDING), round(cols * PADDING)
+    top = max(0, top - padding_rows)
+    bottom = min(rows - 1, bottom + padding_rows)
+    left = max(0, left - padding_cols)
+    right = min(cols - 1, right + padding_cols)
 
-    print(len(red_img_bw), len(red_img_bw[0]))
+    red_img_bw = img_bw[top:bottom + 1, left:right + 1]
+    rows, cols = red_img_bw.shape
 
-    # plt.imshow(red_img_bw, cmap="Greys_r")
-    # plt.show()
+    if SHOW:
+        plt.imshow(red_img_bw, cmap="Greys_r")
+        plt.show()
 
     # initialize frame
     top, left = 0, 0
-    step = 100
-    frame = Frame((top, left), (frame_rows, frame_cols))
-    print(frame.total)
+    frame_size = min(round(rows * FRAMEFACTOR), round(cols * FRAMEFACTOR))
+    step = round(frame_size * STEPFACTOR)
+
+    frame = Frame((top, left), (frame_size, frame_size))
+
+    # print(frame_size, step)
+
+    blacks_max = frame.total * CORNERFACTOR_MAX
+    blacks_min = frame.total * CORNERFACTOR_MIN
+
     while frame:
         # evaluate img_bw in frame
-        # print(min(frame.points), max(frame.points))
-        black = 0
-        too_much_black = False
+        blacks = 0
+        too_much_blacks = False
         for r, c in frame.points:
-            # print(r, c)
-            if not red_img_bw[r][c]:
-                black += 1
-            if black > (frame.total / 4) * 1.1:
-                too_much_black = True
+            if red_img_bw[r][c] == BLACK:
+                blacks += 1
+            if blacks > blacks_max:
+                too_much_blacks = True
                 break
-        if (frame.total / 4) * 0.9 < black and not too_much_black:  # possible corner
-            print(round(black/frame.total*100, 1))
+        if blacks_min < blacks and not too_much_blacks:  # possible corner
+            # print(round(blacks / frame.total * 100, 1))
             corners.append(frame.center)
-            rims.append([(frame.top, frame.left), (frame.bottom, frame.right)])
+            rims.append([frame.start, frame.end])
 
         # move frame to next position
         frame = frame.move_frame_in_array(red_img_bw, step)
 
     return red_img_bw, corners, rims
+
+
+def read_file_to_bw(filepath, threshold=THRESHOLD):
+    img = cv2.imread(filepath)
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_bw = img_gray
+    img_bw[img_gray <= threshold] = BLACK
+    img_bw[img_gray > threshold] = WHITE
+    return img_bw
 
 
 if __name__ == '__main__':
@@ -138,24 +158,20 @@ if __name__ == '__main__':
     for f in file_type_list(PATH, "jpg"):
         print(f"file: {f}")
 
-        THRESHOLD = 25
-        img_gray = cv2.imread(PATH + f, cv2.IMREAD_GRAYSCALE)
-        img_bw = img_gray
-        img_bw[img_gray <= THRESHOLD] = 0
-        img_bw[img_gray > THRESHOLD] = 255
+        img_bw = read_file_to_bw(PATH + f)
+        if SHOW:
+            plt.imshow(img_bw, cmap="Greys_r")
+            plt.show()
 
-        # list_bw = img_bw.tolist()
-        # plt.imshow(list_bw, cmap="Greys_r")
-        # plt.show()
-        red_img_bw, corners, rims = find_my_corners(img_bw)
-        img_np = np.array(red_img_bw, dtype=np.uint8)
-        # print(img_np.shape)
-        img = draw_corners_on_img(img_np, corners, rims)
-        # assert len(corners) == len(SIDES)
-        # continue
-        # img_bw = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        # keep img_bw clean for analysing
+        img_bw, corners, rims = find_my_corners(img_bw)
+
+        img = draw_corners_on_img(img_bw, corners, rims)
+
+        if SHOW:
+            plt.imshow(img, cmap="Greys_r")
+            plt.show()
+
         images.append(img)
 
+    print(time.perf_counter()-start_time)
     plot_to_pdf(images)
-    # assert len(corners) == len(SIDES)
