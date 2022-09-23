@@ -1,4 +1,4 @@
-import cv2.cv2
+# import cv2.cv2
 import numpy as np
 import math
 import os
@@ -72,7 +72,7 @@ def find_my_corners(img_bw_clip):
     frame_size = min(round(rows * FRAMEFACTOR), round(cols * FRAMEFACTOR))
     step = round(frame_size * STEPFACTOR)
 
-    frame = Frame((top, left), (frame_size, frame_size))
+    frame = Frame((top, left), (frame_size, frame_size), img_bw_clip)
 
     blacks_max = frame.total * CORNERFACTOR_MAX
     blacks_min = frame.total * CORNERFACTOR_MIN
@@ -94,6 +94,7 @@ def find_my_corners(img_bw_clip):
 
         # move frame to next position
         frame = frame.move_frame_in_array(img_bw_clip, step)
+        # frame = frame.snake_frame(step)
 
     return corners, rims
 
