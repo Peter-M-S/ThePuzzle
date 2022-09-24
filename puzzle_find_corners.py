@@ -14,7 +14,7 @@ SHOW = False
 THRESHOLD = 25
 PADDING = 0.1
 FRAMEFACTOR = 1/6
-STEPFACTOR = 1/5
+STEPFACTOR = 1/10
 CORNERFACTOR_MAX = 0.25 * 1.1
 CORNERFACTOR_MIN = 0.25 * 0.9
 BLACK = 0
@@ -24,10 +24,12 @@ WHITE = 255
 def file_type_list(path, ending=""):
     # returns a list of files of the "." + ending type in path
     # if ending = "", return all types?
-    # todo ensure lower upper case
+    # ensure lower upper case by converting actual and target ending to .casefold()
     files_type = []
     for file in os.listdir(path):
-        if file.endswith("." + ending):
+        base, ext = os.path.splitext(file)
+        file = "".join([base, ext.casefold()])
+        if file.endswith("." + ending.casefold()):
             files_type.append(file)
     return files_type
 
@@ -63,6 +65,9 @@ def plot_to_pdf(images_list):
 
 
 def find_my_corners(img_bw_clip):
+    def is_quarter_of_total():
+        return blacks_min < np.count_nonzero(frame.values == BLACK) <= blacks_max
+
     corners = []
     rims = []
     rows, cols = img_bw_clip.shape
@@ -74,27 +79,27 @@ def find_my_corners(img_bw_clip):
 
     frame = Frame((top, left), (frame_size, frame_size), img_bw_clip)
 
+    # a corner will have blacks ca. 0.25 of total
     blacks_max = frame.total * CORNERFACTOR_MAX
     blacks_min = frame.total * CORNERFACTOR_MIN
 
     while frame:
         # evaluate img_bw in frame
-        blacks = 0
-        too_much_blacks = False
-        for r, c in frame.points:
-            if img_bw_clip[r][c] == BLACK:
-                blacks += 1
-            if blacks > blacks_max:
-                too_much_blacks = True
-                break
-        if blacks_min < blacks and not too_much_blacks:  # possible corner
-            # print(round(blacks / frame.total * 100, 1))
-            corners.append(frame.center)
-            rims.append([frame.start, frame.end])
+        if is_quarter_of_total():
+
+            # check if exactly 1 of 4 corners in this frame has blacks
+            black_corners = []
+            check_1oo4_frame = Frame((0, 0), (int(frame.width/4), int(frame.height/4)), frame.values)
+            black_corners.append(np.count_nonzero(check_1oo4_frame.values == BLACK) > 0)
+            while check_1oo4_frame and sum(black_corners) <= 1:
+                check_1oo4_frame.snake_frame(frame.width)
+                black_corners.append(np.count_nonzero(check_1oo4_frame.values == BLACK) > 0)
+            if len(black_corners) == 4 and sum(black_corners) == 1:
+                corners.append(frame.center)
+                rims.append([frame.start, frame.end])
 
         # move frame to next position
-        frame = frame.move_frame_in_array(img_bw_clip, step)
-        # frame = frame.snake_frame(step)
+        frame = frame.snake_frame(step)
 
     return corners, rims
 
@@ -157,7 +162,7 @@ if __name__ == '__main__':
     # for f in file_type_list(PATH, "JPG"):
     for f in file_type_list(PATH, "jpg"):
         print(f"file: {f}")
-
+        print("preprocessing...")
         img_bw = read_file_to_bw(PATH + f)
         if SHOW:
             plt.imshow(img_bw, cmap="Greys_r")
@@ -168,7 +173,10 @@ if __name__ == '__main__':
             plt.imshow(img_bw_clip, cmap="Greys_r")
             plt.show()
 
+        print(time.perf_counter() - start_time)
+        print("searching corners ...")
         corners, rims = find_my_corners(img_bw_clip)
+        print(time.perf_counter() - start_time)
 
         img = draw_corners_on_img(img_bw_clip, corners, rims)
         if SHOW:
