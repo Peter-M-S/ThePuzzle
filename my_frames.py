@@ -39,6 +39,7 @@ class Frame:
 
     @property
     def center(self):
+        # coordinates of array
         r = round(self.top + self.height / 2)
         c = round(self.left + self.width / 2)
         return r, c
@@ -243,7 +244,7 @@ class Frame:
 
     def mid_frame(self, mid_fraction):
         _width, _height = int(self.width * mid_fraction / 2 + .5), int(self.height * mid_fraction / 2 + .5)
-        mid = self.values[self.center[0]-_width:self.center[0]+_width, self.center[1]-_height:self.center[1]+_height]
+        mid = self.array[self.center[0]-_width:self.center[0]+_width+1, self.center[1]-_height:self.center[1]+_height+1]
         return mid
 
 
@@ -313,4 +314,6 @@ if __name__ == '__main__':
         print(f.start, f.end)
         print(f.values)
         for i in range(4):
-            print(f.get_corners(0.25)[i])
+            print(f.corners_dict(0.25)[i])
+
+    print(f"mid frame:  {f.mid_frame(0.25)}")

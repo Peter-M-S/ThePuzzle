@@ -100,21 +100,21 @@ def find_my_corners(img_bw_clip):
             if (black_quad := is_single_item(black_corners)) is not False:
 
                 if frame.quadrant ^ black_quad == 0b11:
-
-                    blacks = np.count_nonzero(frame.mid_frame(0.25) == BLACK)
-                    total = np.count_nonzero(frame.mid_frame(0.25) is not None)
-                    mid_blacks.append((0.25 - blacks/total)**2)
-
                     corners.append(frame.center)
                     rims.append([frame.start, frame.end])
+
+                    # rank corners by closeness to 0.25 blacks of total
+                    mid_frame = frame.mid_frame(0.25)
+                    blacks = np.count_nonzero(mid_frame == BLACK)
+                    total = mid_frame.size
+                    mid_blacks.append((0.25 - blacks/total)**2)
 
         # move frame to next position
         frame = frame.snake_frame(step)
 
-    best4 = [zip(mid_blacks, corners)]
+    best_corners = [i for _, i in sorted(zip(mid_blacks, corners))]
 
-    best4 = best4.sort()
-    best4 = best4[:4][1]
+    best4 = best_corners[:4]
     return best4, rims
 
 
@@ -174,9 +174,10 @@ if __name__ == '__main__':
     # PATH = "./"
     images = []
 
-    for f in file_type_list(PATH, "JPG"):
+    # todo extract preprossesing and save img_bw_clip images only
+    for i, f in enumerate(file_type_list(PATH, "JPG")):
     # for f in file_type_list(PATH, "jpg"):
-        print(f"file: {f}")
+        print(f"{i}. file: {f}")
         print("preprocessing...")
         img_bw = read_file_to_bw(PATH + f)
         if SHOW:
