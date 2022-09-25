@@ -7,14 +7,13 @@ import cv2.cv2 as cv2
 import time
 from my_frames import Frame
 
-
-# SHOW = True
-SHOW = False
+SHOW = True
+# SHOW = False
 
 THRESHOLD = 25
 PADDING = 0.1
-FRAMEFACTOR = 1/6
-STEPFACTOR = 1/10
+FRAMEFACTOR = 1 / 6
+STEPFACTOR = 1 / 10
 CORNERFACTOR_MAX = 0.25 * 1.1
 CORNERFACTOR_MIN = 0.25 * 0.9
 BLACK = 0
@@ -38,13 +37,13 @@ def draw_corners_on_img(img, corners, rims):
     # draw rgb-lines on bw_image
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
     w, h, d = img.shape
-    radius = round(min(w, h)/35)
+    radius = round(min(w, h) / 35)
 
     for c in corners:
         cv2.circle(img, (c[1], c[0]), radius, (255, 0, 0), -1)
 
     for r in rims:
-        cv2.rectangle(img, (r[0][1], r[0][0]), (r[1][1], r[1][0]), (0, 0, 255), int(radius/10))
+        cv2.rectangle(img, (r[0][1], r[0][0]), (r[1][1], r[1][0]), (0, 0, 255), int(radius / 10))
 
     return img
 
@@ -68,6 +67,14 @@ def find_my_corners(img_bw_clip):
     def is_quarter_of_total():
         return blacks_min < np.count_nonzero(frame.values == BLACK) <= blacks_max
 
+    def get_black_corners():
+        frame_corners = frame.corners_dict(0.4)
+        return [key for key, val in frame_corners.items() if np.count_nonzero(val == BLACK) > 0]
+
+    def is_single_item(a: list):
+        # check if exactly 1 in this list is true
+        return a[0] if len(a) == 1 else False
+
     corners = []
     rims = []
     rows, cols = img_bw_clip.shape
@@ -87,16 +94,13 @@ def find_my_corners(img_bw_clip):
         # evaluate img_bw in frame
         if is_quarter_of_total():
 
-            # check if exactly 1 of 4 corners in this frame has blacks
-            black_corners = []
-            check_1oo4_frame = Frame((0, 0), (int(frame.width/4), int(frame.height/4)), frame.values)
-            black_corners.append(np.count_nonzero(check_1oo4_frame.values == BLACK) > 0)
-            while check_1oo4_frame and sum(black_corners) <= 1:
-                check_1oo4_frame.snake_frame(frame.width)
-                black_corners.append(np.count_nonzero(check_1oo4_frame.values == BLACK) > 0)
-            if len(black_corners) == 4 and sum(black_corners) == 1:
-                corners.append(frame.center)
-                rims.append([frame.start, frame.end])
+            black_corners = get_black_corners()
+            if (black_quad := is_single_item(black_corners)) is not False:
+
+                if frame.quadrant ^ black_quad == 0b11:
+
+                    corners.append(frame.center)
+                    rims.append([frame.start, frame.end])
 
         # move frame to next position
         frame = frame.snake_frame(step)
@@ -149,7 +153,7 @@ def clip_to_padding(img_bw):
     right = min(cols - 1, right + padding_cols)
 
     red_img_bw = img_bw[top:bottom + 1, left:right + 1]
-    
+
     return red_img_bw
 
 
@@ -167,7 +171,7 @@ if __name__ == '__main__':
         if SHOW:
             plt.imshow(img_bw, cmap="Greys_r")
             plt.show()
-            
+
         img_bw_clip = clip_to_padding(img_bw)
         if SHOW:
             plt.imshow(img_bw_clip, cmap="Greys_r")
@@ -177,7 +181,7 @@ if __name__ == '__main__':
         print("searching corners ...")
         corners, rims = find_my_corners(img_bw_clip)
         print(time.perf_counter() - start_time)
-
+        print(f" found corners: {len(corners)}")
         img = draw_corners_on_img(img_bw_clip, corners, rims)
         if SHOW:
             plt.imshow(img, cmap="Greys_r")
@@ -185,5 +189,5 @@ if __name__ == '__main__':
 
         images.append(img)
 
-    print(time.perf_counter()-start_time)
+    print(time.perf_counter() - start_time)
     plot_to_pdf(images)

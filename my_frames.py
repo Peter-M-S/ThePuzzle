@@ -44,6 +44,23 @@ class Frame:
         return r, c
 
     @property
+    def quadrant(self):
+        _top = 0 if self.center[0] <= self.array_rows/2 else 1
+        _left = 0 if self.center[1] <= self.array_cols/2 else 1
+        # _quad_dict = {"top_left": False, "top_right": False, "bottom_right": False, "bottom_left": False}
+        # if self.center[0] <= self.height/2:
+        #     if self.center[1] <= self.width/2:
+        #         _quad_dict["top_left"] = True
+        #     else:
+        #         _quad_dict["top_right"] = True
+        # else:
+        #     if self.center[1] <= self.width/2:
+        #         _quad_dict["bottom_left"] = True
+        #     else:
+        #         _quad_dict["bottom_right"] = True
+        return (_top * 2) + _left
+
+    @property
     def start(self):
         return self.top, self.left
 
@@ -59,7 +76,7 @@ class Frame:
         return points
 
     def get_values(self):
-        values = self.array[self.top:self.top+self.height, self.left:self.left+self.width]
+        values = self.array[self.top:self.top + self.height, self.left:self.left + self.width]
         return values
 
     def add_col(self):
@@ -86,13 +103,13 @@ class Frame:
     def remove_col(self):
         # remove the point and/or values left in frame if to_right = True otherwise point and/or values right in frame
         if self.to_right:
-            if self. use_points:
+            if self.use_points:
                 self.points.difference_update(self.array_points_cols[self.left][self.top:self.top + self.height])
             if self.use_values:
                 self.values = np.delete(self.values, 0, 1)
             self.left += 1
         else:
-            if self. use_points:
+            if self.use_points:
                 self.points.difference_update(self.array_points_cols[self.right][self.top:self.top + self.height])
             if self.use_values:
                 self.values = np.delete(self.values, -1, 1)
@@ -116,14 +133,14 @@ class Frame:
             if self.use_points:
                 self.points.update(self.array_points_rows[self.top][self.left:self.left + self.width])
             if self.use_values:
-                new_row = self.array[self.top, self.left:self.left+self.width]
+                new_row = self.array[self.top, self.left:self.left + self.width]
                 self.values = np.r_[[new_row], self.values]
 
     def remove_row(self):
         # remove the point and/or values top in frame if to_bottom = True otherwise point and/or values bottom in frame
         self.height -= 1
         if self.to_bottom:
-            if self. use_points:
+            if self.use_points:
                 self.points.difference_update(self.array_points_rows[self.top][self.left:self.left + self.width])
             if self.use_values:
                 self.values = np.delete(self.values, 0, 0)
@@ -226,17 +243,36 @@ class Frame:
             self.remove_row()
         self.to_right = not self.to_right  # invert the sideways direction
 
+    # def get_corners(self, corner_fraction):
+    #     # list with 4 sub arrays of values of width/height*corner_fraction,
+    #     # indices: top_left, top_right, bot_right, bot_left
+    #     width, height = int(self.width * corner_fraction + .5), int(self.height * corner_fraction + .5)
+    #     corners = [self.values[0:height, 0:width]]
+    #     corners.append(self.values[0:height, self.width - width:self.width])
+    #     corners.append(self.values[self.height - height:self.height, self.width - width:self.width])
+    #     corners.append((self.values[self.height - height:self.height, 0:width]))
+    #     return corners
+
+    def corners_dict(self, corner_fraction):
+        # list with 4 sub arrays of values of width/height*corner_fraction,
+        _width, _height = int(self.width * corner_fraction + .5), int(self.height * corner_fraction + .5)
+        corners = {0b00: self.values[0:_height, 0:_width],
+                   0b01: self.values[0:_height, self.width - _width:self.width],
+                   0b11: self.values[self.height - _height:self.height, self.width - _width:self.width],
+                   0b10: self.values[self.height - _height:self.height, 0:_width]}
+        return corners
+
 
 if __name__ == '__main__':
     # Test unit for my_frames
-    ROWS = 11
-    COLS = 14
+    ROWS = 20
+    COLS = 25
     a = np.zeros([ROWS, COLS])
     for i, r in enumerate(a):
         for j, c in enumerate(r):
             a[i, j] = i + 0.01 * j
 
-    f = Frame((0, 0), (1, 1), a, use_points=True, use_values=True)
+    f = Frame((0, 0), (8, 8), a, use_points=False, use_values=True)
 
     print(a)
 
@@ -281,14 +317,16 @@ if __name__ == '__main__':
     # f.to_right = True
     # f.to_bottom = True
 
-    print(len(f.points))
+    # print(len(f.points))
     print(f.start, f.end)
     print(f.values)
 
     print("snake_frame")
 
     while f.snake_frame(100):
-        print(len(f.points))
-        print(f.points)
+        # print(len(f.points))
+        # print(f.points)
         print(f.start, f.end)
         print(f.values)
+        for i in range(4):
+            print(f.get_corners(0.25)[i])
