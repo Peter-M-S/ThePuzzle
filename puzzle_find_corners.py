@@ -7,8 +7,8 @@ import cv2.cv2 as cv2
 import time
 from my_frames import Frame
 
-SHOW = True
-# SHOW = False
+# SHOW = True
+SHOW = False
 
 THRESHOLD = 25
 PADDING = 0.1
@@ -26,9 +26,10 @@ def file_type_list(path, ending=""):
     # ensure lower upper case by converting actual and target ending to .casefold()
     files_type = []
     for file in os.listdir(path):
-        base, ext = os.path.splitext(file)
-        file = "".join([base, ext.casefold()])
-        if file.endswith("." + ending.casefold()):
+        # base, ext = os.path.splitext(file)
+        # file = "".join([base, ext.casefold()])
+        # if file.endswith("." + ending.casefold()):
+        if file.endswith("." + ending):
             files_type.append(file)
     return files_type
 
@@ -76,6 +77,7 @@ def find_my_corners(img_bw_clip):
         return a[0] if len(a) == 1 else False
 
     corners = []
+    mid_blacks = []
     rims = []
     rows, cols = img_bw_clip.shape
 
@@ -99,16 +101,25 @@ def find_my_corners(img_bw_clip):
 
                 if frame.quadrant ^ black_quad == 0b11:
 
+                    blacks = np.count_nonzero(frame.mid_frame(0.25) == BLACK)
+                    total = np.count_nonzero(frame.mid_frame(0.25) is not None)
+                    mid_blacks.append((0.25 - blacks/total)**2)
+
                     corners.append(frame.center)
                     rims.append([frame.start, frame.end])
 
         # move frame to next position
         frame = frame.snake_frame(step)
 
-    return corners, rims
+    best4 = [zip(mid_blacks, corners)]
+
+    best4 = best4.sort()
+    best4 = best4[:4][1]
+    return best4, rims
 
 
 def read_file_to_bw(filepath, threshold=THRESHOLD):
+    # todo case sensitive extentions
     img = cv2.imread(filepath)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_bw = img_gray
@@ -159,12 +170,12 @@ def clip_to_padding(img_bw):
 
 if __name__ == '__main__':
     start_time = time.perf_counter()
-    # PATH = "RV0781508/"
-    PATH = "./"
+    PATH = "RV0781508/"
+    # PATH = "./"
     images = []
 
-    # for f in file_type_list(PATH, "JPG"):
-    for f in file_type_list(PATH, "jpg"):
+    for f in file_type_list(PATH, "JPG"):
+    # for f in file_type_list(PATH, "jpg"):
         print(f"file: {f}")
         print("preprocessing...")
         img_bw = read_file_to_bw(PATH + f)

@@ -47,17 +47,6 @@ class Frame:
     def quadrant(self):
         _top = 0 if self.center[0] <= self.array_rows/2 else 1
         _left = 0 if self.center[1] <= self.array_cols/2 else 1
-        # _quad_dict = {"top_left": False, "top_right": False, "bottom_right": False, "bottom_left": False}
-        # if self.center[0] <= self.height/2:
-        #     if self.center[1] <= self.width/2:
-        #         _quad_dict["top_left"] = True
-        #     else:
-        #         _quad_dict["top_right"] = True
-        # else:
-        #     if self.center[1] <= self.width/2:
-        #         _quad_dict["bottom_left"] = True
-        #     else:
-        #         _quad_dict["bottom_right"] = True
         return (_top * 2) + _left
 
     @property
@@ -243,16 +232,6 @@ class Frame:
             self.remove_row()
         self.to_right = not self.to_right  # invert the sideways direction
 
-    # def get_corners(self, corner_fraction):
-    #     # list with 4 sub arrays of values of width/height*corner_fraction,
-    #     # indices: top_left, top_right, bot_right, bot_left
-    #     width, height = int(self.width * corner_fraction + .5), int(self.height * corner_fraction + .5)
-    #     corners = [self.values[0:height, 0:width]]
-    #     corners.append(self.values[0:height, self.width - width:self.width])
-    #     corners.append(self.values[self.height - height:self.height, self.width - width:self.width])
-    #     corners.append((self.values[self.height - height:self.height, 0:width]))
-    #     return corners
-
     def corners_dict(self, corner_fraction):
         # list with 4 sub arrays of values of width/height*corner_fraction,
         _width, _height = int(self.width * corner_fraction + .5), int(self.height * corner_fraction + .5)
@@ -261,6 +240,11 @@ class Frame:
                    0b11: self.values[self.height - _height:self.height, self.width - _width:self.width],
                    0b10: self.values[self.height - _height:self.height, 0:_width]}
         return corners
+
+    def mid_frame(self, mid_fraction):
+        _width, _height = int(self.width * mid_fraction / 2 + .5), int(self.height * mid_fraction / 2 + .5)
+        mid = self.values[self.center[0]-_width:self.center[0]+_width, self.center[1]-_height:self.center[1]+_height]
+        return mid
 
 
 if __name__ == '__main__':
