@@ -1,6 +1,4 @@
-# import cv2.cv2
 import numpy as np
-import math
 import os
 import matplotlib.pyplot as plt
 import cv2.cv2 as cv2
@@ -9,6 +7,9 @@ from my_frames import Frame
 
 # SHOW = True
 SHOW = False
+
+# PREPROCESS = True
+PREPROCESS = False
 
 THRESHOLD = 25
 PADDING = 0.1
@@ -32,6 +33,56 @@ def file_type_list(path, ending=""):
         if file.endswith("." + ending):
             files_type.append(file)
     return files_type
+
+
+def read_file_to_bw(filepath, threshold=THRESHOLD):
+    # todo case sensitive extentions
+    img = cv2.imread(filepath)
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_bw = img_gray
+    img_bw[img_gray <= threshold] = BLACK
+    img_bw[img_gray > threshold] = WHITE
+    return img_bw
+
+
+def clip_to_padding(img_bw):
+    rows, cols = img_bw.shape
+    # print(img_bw.shape)
+
+    # clip img_bw near to black
+    top = 0
+    bottom = rows - 1
+    for i, r in enumerate(img_bw):
+        if any(c == BLACK for c in r):
+            top = i
+            break
+    for i in range(1, rows):
+        if any(c == BLACK for c in img_bw[-i]):
+            bottom = rows - i
+            break
+
+    left = cols
+    for r in img_bw[top:bottom + 1]:
+        for i, c in enumerate(r):
+            if c == BLACK:
+                left = min(i, left)
+                break
+    right = 0
+    for r in img_bw[top:bottom + 1]:
+        for i in range(1, cols):
+            if r[-i] == BLACK:
+                right = max(cols - i, right)
+                break
+
+    padding_rows, padding_cols = round(rows * PADDING), round(cols * PADDING)
+    top = max(0, top - padding_rows)
+    bottom = min(rows - 1, bottom + padding_rows)
+    left = max(0, left - padding_cols)
+    right = min(cols - 1, right + padding_cols)
+
+    red_img_bw = img_bw[top:bottom + 1, left:right + 1]
+
+    return red_img_bw
 
 
 def draw_corners_on_img(img, corners, rims):
@@ -118,78 +169,40 @@ def find_my_corners(img_bw_clip):
     return best4, rims
 
 
-def read_file_to_bw(filepath, threshold=THRESHOLD):
-    # todo case sensitive extentions
-    img = cv2.imread(filepath)
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_bw = img_gray
-    img_bw[img_gray <= threshold] = BLACK
-    img_bw[img_gray > threshold] = WHITE
-    return img_bw
-
-
-def clip_to_padding(img_bw):
-    rows, cols = img_bw.shape
-    # print(img_bw.shape)
-
-    # clip img_bw near to black
-    top = 0
-    bottom = rows - 1
-    for i, r in enumerate(img_bw):
-        if any(c == BLACK for c in r):
-            top = i
-            break
-    for i in range(1, rows):
-        if any(c == BLACK for c in img_bw[-i]):
-            bottom = rows - i
-            break
-
-    left = cols
-    for r in img_bw[top:bottom + 1]:
-        for i, c in enumerate(r):
-            if c == BLACK:
-                left = min(i, left)
-                break
-    right = 0
-    for r in img_bw[top:bottom + 1]:
-        for i in range(1, cols):
-            if r[-i] == BLACK:
-                right = max(cols - i, right)
-                break
-
-    padding_rows, padding_cols = round(rows * PADDING), round(cols * PADDING)
-    top = max(0, top - padding_rows)
-    bottom = min(rows - 1, bottom + padding_rows)
-    left = max(0, left - padding_cols)
-    right = min(cols - 1, right + padding_cols)
-
-    red_img_bw = img_bw[top:bottom + 1, left:right + 1]
-
-    return red_img_bw
-
-
 if __name__ == '__main__':
     start_time = time.perf_counter()
     PATH = "RV0781508/"
     # PATH = "./"
     images = []
 
-    # todo extract preprossesing and save img_bw_clip images only
-    for i, f in enumerate(file_type_list(PATH, "JPG")):
-    # for f in file_type_list(PATH, "jpg"):
+    if PREPROCESS:
+
+        for i, f in enumerate(file_type_list(PATH, "JPG")):
+        # for f in file_type_list(PATH, "jpg"):
+            print(f"{i}. file: {f}")
+            print("preprocessing...")
+            img_bw = read_file_to_bw(PATH + f)
+            if SHOW:
+                plt.imshow(img_bw, cmap="Greys_r")
+                plt.show()
+
+            img_bw_clip = clip_to_padding(img_bw)
+            if SHOW:
+                plt.imshow(img_bw_clip, cmap="Greys_r")
+                plt.show()
+
+            # save preprocessed img to path
+            base, ext = os.path.splitext(f)
+            new_filename = base + "_bwc" + ext.lower()
+            cv2.imwrite(PATH + new_filename, img_bw_clip)
+            print(time.perf_counter() - start_time)
+
+    for i, f in enumerate(file_type_list(PATH, "jpg")):
+        base, ext = os.path.splitext(f)
+        if base[-4:] != "_bwc":
+            continue
         print(f"{i}. file: {f}")
-        print("preprocessing...")
-        img_bw = read_file_to_bw(PATH + f)
-        if SHOW:
-            plt.imshow(img_bw, cmap="Greys_r")
-            plt.show()
-
-        img_bw_clip = clip_to_padding(img_bw)
-        if SHOW:
-            plt.imshow(img_bw_clip, cmap="Greys_r")
-            plt.show()
-
-        print(time.perf_counter() - start_time)
+        img_bw_clip = cv2.imread(PATH + f, cv2.IMREAD_GRAYSCALE)
         print("searching corners ...")
         corners, rims = find_my_corners(img_bw_clip)
         print(time.perf_counter() - start_time)
