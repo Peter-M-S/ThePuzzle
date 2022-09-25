@@ -8,8 +8,8 @@ from my_frames import Frame
 # SHOW = True
 SHOW = False
 
-# PREPROCESS = True
-PREPROCESS = False
+PREPROCESS = True
+# PREPROCESS = False
 
 THRESHOLD = 25
 PADDING = 0.1
@@ -169,6 +169,35 @@ def find_my_corners(img_bw_clip):
     return best4, rims
 
 
+def preprocess_to_bw_clipped():
+    preprocess_start_time = time.perf_counter()
+    for i, f in enumerate(file_type_list(PATH, "JPG")):
+        # for f in file_type_list(PATH, "jpg"):
+        print(f"{i+1}. file: {f}")
+        print("preprocessing...")
+        img_bw = read_file_to_bw(PATH + f)
+        if SHOW:
+            plt.imshow(img_bw, cmap="Greys_r")
+            plt.show()
+
+        img_bw_clip = clip_to_padding(img_bw)
+        if SHOW:
+            plt.imshow(img_bw_clip, cmap="Greys_r")
+            plt.show()
+
+        # save preprocessed img to path
+        base, ext = os.path.splitext(f)
+        new_filename = base + "_bwc" + ext.lower()
+        cv2.imwrite(PATH + new_filename, img_bw_clip)
+        print("file written")
+    print(time.perf_counter() - preprocess_start_time)
+
+
+def is_bwc(f):
+    base, _ = os.path.splitext(f)
+    return base[-4:] == "_bwc"
+
+
 if __name__ == '__main__':
     start_time = time.perf_counter()
     PATH = "RV0781508/"
@@ -176,36 +205,17 @@ if __name__ == '__main__':
     images = []
 
     if PREPROCESS:
+        preprocess_to_bw_clipped()
 
-        for i, f in enumerate(file_type_list(PATH, "JPG")):
-        # for f in file_type_list(PATH, "jpg"):
-            print(f"{i}. file: {f}")
-            print("preprocessing...")
-            img_bw = read_file_to_bw(PATH + f)
-            if SHOW:
-                plt.imshow(img_bw, cmap="Greys_r")
-                plt.show()
-
-            img_bw_clip = clip_to_padding(img_bw)
-            if SHOW:
-                plt.imshow(img_bw_clip, cmap="Greys_r")
-                plt.show()
-
-            # save preprocessed img to path
-            base, ext = os.path.splitext(f)
-            new_filename = base + "_bwc" + ext.lower()
-            cv2.imwrite(PATH + new_filename, img_bw_clip)
-            print(time.perf_counter() - start_time)
-
-    for i, f in enumerate(file_type_list(PATH, "jpg")):
-        base, ext = os.path.splitext(f)
-        if base[-4:] != "_bwc":
-            continue
-        print(f"{i}. file: {f}")
+    for i, f in enumerate([a for a in file_type_list(PATH, "jpg") if is_bwc(a)]):
+        # if is_not_bwc(f):
+        #     continue
+        print(f"{i+1}. file: {f}")
         img_bw_clip = cv2.imread(PATH + f, cv2.IMREAD_GRAYSCALE)
         print("searching corners ...")
+        corner_start_time = time.perf_counter()
         corners, rims = find_my_corners(img_bw_clip)
-        print(time.perf_counter() - start_time)
+        print(time.perf_counter() - corner_start_time)
         print(f" found corners: {len(corners)}")
         img = draw_corners_on_img(img_bw_clip, corners, rims)
         if SHOW:
