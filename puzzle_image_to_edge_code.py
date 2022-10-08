@@ -23,8 +23,8 @@ import puzzle_utils as pu
 
 DRAW = True
 # DRAW = False
-# SHOW = True
-SHOW = False
+SHOW = True
+# SHOW = False
 RESOLUTION = 1_000
 SIDE_COLOR = {0: (255, 0, 0), 1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 255, 0), "V": (128, 128, 128)}
 BOW_COLOR = {1: 255, -1: 0}
