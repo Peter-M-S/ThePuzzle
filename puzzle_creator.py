@@ -13,7 +13,10 @@ def main(rows, cols, edge_code_length, fuzzy):
     edge_codes = []
     while len(edge_codes) < inner_edges:
         edge_type = random.choice([-1, 1])
-        edge_code = [edge_type] + [random.randint(150, 850) for _ in range(edge_code_length - 1)]
+        vertex1 = [random.randint(150, 450), random.randint(100, 200)]
+        vertex2 = [random.randint(300, 600), random.randint(200, 400)]
+        vertex3 = [random.randint(500, 850), random.randint(100, 200)]
+        edge_code = [edge_type] + vertex1 + vertex2 + vertex3
         # eg. edge_code[-1] > inner_edges/2
         if edge_code not in edge_codes:
             edge_codes.append(edge_code)
@@ -88,4 +91,4 @@ def main(rows, cols, edge_code_length, fuzzy):
 
 if __name__ == '__main__':
     random.seed(1000)
-    main(rows=4, cols=6, edge_code_length=7, fuzzy=145)
+    main(rows=3, cols=4, edge_code_length=7, fuzzy=100)
