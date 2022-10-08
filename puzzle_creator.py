@@ -1,7 +1,7 @@
 import random
 
 
-def main(rows, cols, edge_code_length):
+def main(rows, cols, edge_code_length, fuzzy):
     edge_code_default = [0]
     edge_default = [edge_code_default[:] for e in range(4)]  # todo check why/if [:] is really needed
 
@@ -13,13 +13,18 @@ def main(rows, cols, edge_code_length):
     edge_codes = []
     while len(edge_codes) < inner_edges:
         edge_type = random.choice([-1, 1])
-        edge_code = [edge_type] + [random.randint(1, inner_edges + 1) for _ in range(edge_code_length - 1)]
+        edge_code = [edge_type] + [random.randint(150, 850) for _ in range(edge_code_length - 1)]
         # eg. edge_code[-1] > inner_edges/2
         if edge_code not in edge_codes:
             edge_codes.append(edge_code)
 
     # print(edge_codes)
     counter_edge_codes = [[-i for i in edge_code] for edge_code in edge_codes]
+    if fuzzy:
+        for edge_code in edge_codes:
+            for i in range(len(edge_code[1:])):
+                edge_code[i+1] += random.randint(-fuzzy, fuzzy)
+
     # print(counter_edge_codes)
 
     # transfer edge-codes to pieces
@@ -83,4 +88,4 @@ def main(rows, cols, edge_code_length):
 
 if __name__ == '__main__':
     random.seed(1000)
-    main(rows=4, cols=6, edge_code_length=7)
+    main(rows=4, cols=6, edge_code_length=7, fuzzy=145)
