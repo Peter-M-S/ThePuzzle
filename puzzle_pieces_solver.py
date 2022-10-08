@@ -115,7 +115,7 @@ def display_board(board):
         print("|", end="\n")
         for p in row:
             if p is not None:
-                print(" {:2} | {:8} {} | {:2} |".format(p.edge_codes[3][0], p.name, p.rotation, p.edge_codes[1][0]),
+                print(" {:2} | {:8} {} | {:2} |".format(p.edge_codes[3][0], p.name[:8], p.rotation, p.edge_codes[1][0]),
                       end="")
             else:
                 print("    |            |    |", end="")
@@ -219,10 +219,11 @@ def dfs_puzzle(solution, used, remaining_pieces, board, position):
 
         for i in range(rotations):
             p2.rotate()
-        print(" {} > {} < {} ".format(p1.id, c[0], p2.id))
+        # print(" {} > {} < {} ".format(p1.id, c[0], p2.id))
         # delta_match(p1, s1, p2)
 
         board[next_position[0]][next_position[1]] = p2
+        # display_board(board)
 
         remaining_pieces.pop(p2.id)
 
@@ -352,9 +353,9 @@ def main(puzzle_file):
     while not (p.edge_codes[0][0] == 0 and p.edge_codes[3][0] == 0):
         p.rotate()
 
-    # max_board_size = len(pieces_in_box)
-    max_board_width = 6
-    max_board_height = 4
+    max_board_width = max_board_height = len(pieces_in_box)
+    # max_board_width = 6
+    # max_board_height = 4
     board = [[None for _ in range(max_board_width)] for _ in range(max_board_height)]
     board[0][0] = p
 
