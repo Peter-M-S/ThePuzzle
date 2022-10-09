@@ -67,13 +67,17 @@ def display_board(board):
     print()
 
 
-def delta_match(p1, p2):
+def delta_match(ec1, ec2):
     delta = 0
     for i in [1, 3, 5]:
-        x1, y1 = p1[i], p1[i + 1]
-        x2, y2 = p2[i], p2[i + 1]
+        x1, y1 = ec1[i], ec1[i + 1]
+        x2, y2 = ec2[i], ec2[i + 1]
         delta += ((x2 + x1) ** 2 + (y2 + y1) ** 2) ** 0.5
     return delta
+
+
+def type_match(ec1, ec2):
+    return ec1[0] * ec2[0] < 0
 
 
 def get_rotations(s1, matching_side):
@@ -85,6 +89,54 @@ def get_rotations(s1, matching_side):
         return next_side(next_side(matching_side))
     else:
         return prev_side(matching_side)
+
+
+def is_matching_to_neighbors(test_solution, board, next_position, rotations, edge_codes):
+    p2_edge_codes = edge_codes[rotations:] + edge_codes[:rotations]
+    r, c = next_position
+
+    top = (r - 1, c) if r - 1 >= 0 else False
+    bottom = (r + 1, c)
+    left = (r, c - 1) if c - 1 >= 0 else False
+    right = (r, c + 1)
+
+    if top in board:
+        for p1 in test_solution:
+            if p1.position == top:
+                ec1 = p1.edge_codes[2]
+                ec2 = p2_edge_codes[0]
+                if ec1[0] * ec2[0] >= 0:
+                    return False
+                if delta_match(ec1, ec2) > p1.max_tolerance:
+                    return False
+    if bottom in board:
+        for p1 in test_solution:
+            if p1.position == bottom:
+                ec1 = p1.edge_codes[0]
+                ec2 = p2_edge_codes[2]
+                if ec1[0] * ec2[0] >= 0:
+                    return False
+                if delta_match(ec1, ec2) > p1.max_tolerance:
+                    return False
+    if left in board:
+        for p1 in test_solution:
+            if p1.position == left:
+                ec1 = p1.edge_codes[1]
+                ec2 = p2_edge_codes[3]
+                if ec1[0] * ec2[0] >= 0:
+                    return False
+                if delta_match(ec1, ec2) > p1.max_tolerance:
+                    return False
+    if right in board:
+        for p1 in test_solution:
+            if p1.position == right:
+                ec1 = p1.edge_codes[3]
+                ec2 = p2_edge_codes[1]
+                if ec1[0] * ec2[0] >= 0:
+                    return False
+                if delta_match(ec1, ec2) > p1.max_tolerance:
+                    return False
+    return True
 
 
 def dfs_puzzle(test_solution, remaining_pieces, board, position, debug_list):
@@ -116,6 +168,10 @@ def dfs_puzzle(test_solution, remaining_pieces, board, position, debug_list):
             matching_side = c[2]
 
             rotations = get_rotations(s1, matching_side)
+
+            # check if other edges match to already existing neighbors
+            if not is_matching_to_neighbors(test_solution, board, next_position, rotations, p2.edge_codes):
+                continue
 
             for i in range(rotations):
                 p2.rotate()
@@ -269,5 +325,153 @@ def main(puzzle_file):
     print()
 
 
+def main2(puzzle_file):
+    pieces_in_box = unbox_pieces(puzzle_file)
+    print("number of pieces: ", len(pieces_in_box))
+
+    edge_pieces = [p for p in pieces_in_box.values() if p.is_edge]
+    inner_pieces = [p for p in pieces_in_box.values() if not p.is_edge]
+    corner_pieces = [p for p in edge_pieces if p.is_corner]
+
+    first_corner = corner_pieces[0]
+    edge_pieces.remove(first_corner)
+    top_frame = [first_corner]
+    # rotate to top_left corner
+    while not (first_corner.rims[0] and first_corner.rims[3]):
+        first_corner.rotate()
+
+    # rotate all edge_pieces with rim to top
+    for ep in edge_pieces:
+        while not ep.rims[0]:
+            ep.rotate()
+        if ep.is_corner:
+            while not (ep.rims[0] and ep.rims[1]):
+                ep.rotate()
+
+    ec1 = first_corner.edge_codes[1]
+    top_frame_end = False
+    # get best edge piece to connect
+    while not top_frame_end:
+        best_piece = edge_pieces[0]
+        delta = 100_000
+        for ep in edge_pieces:
+            if not type_match(ec1, ep.edge_codes[3]):
+                continue
+            delta_i = delta_match(ec1, ep.edge_codes[3])
+            if delta_i < delta:
+                delta = delta_i
+                best_piece = ep
+        edge_pieces.remove(best_piece)
+        top_frame.append(best_piece)
+        ec1 = best_piece.edge_codes[1]
+        top_frame_end = best_piece.is_corner
+
+    width = len(top_frame)
+    height = int(len(pieces_in_box) / width)
+
+    board = [[None for i in range(width)] for j in range(height)]
+
+    board[0] = top_frame
+
+    # rotate all edge_pieces with rim to right
+    for ep in edge_pieces:
+        while not ep.rims[1]:
+            ep.rotate()
+        if ep.is_corner:
+            while not (ep.rims[1] and ep.rims[2]):
+                ep.rotate()
+
+    ec1 = top_frame[-1].edge_codes[2]
+    right_frame = []
+    right_frame_end = False
+    # get best edge piece to connect
+    while not right_frame_end:
+        best_piece = edge_pieces[0]
+        delta = 100_000
+        for ep in edge_pieces:
+            if not type_match(ec1, ep.edge_codes[0]):
+                continue
+            delta_i = delta_match(ec1, ep.edge_codes[0])
+            if delta_i < delta:
+                delta = delta_i
+                best_piece = ep
+        edge_pieces.remove(best_piece)
+        right_frame.append(best_piece)
+        ec1 = best_piece.edge_codes[2]
+        right_frame_end = best_piece.is_corner
+
+    for i, p in enumerate(right_frame):
+        board[i + 1][-1] = p
+
+    # rotate all edge_pieces with rim to bottom
+    for ep in edge_pieces:
+        while not ep.rims[2]:
+            ep.rotate()
+        if ep.is_corner:
+            while not (ep.rims[2] and ep.rims[3]):
+                ep.rotate()
+
+    ec1 = right_frame[-1].edge_codes[3]
+    bottom_frame = []
+    bottom_frame_end = False
+    # get best edge piece to connect
+    while not bottom_frame_end:
+        best_piece = edge_pieces[0]
+        delta = 100_000
+        for ep in edge_pieces:
+            if not type_match(ec1, ep.edge_codes[1]):
+                continue
+            delta_i = delta_match(ec1, ep.edge_codes[1])
+            if delta_i < delta:
+                delta = delta_i
+                best_piece = ep
+        edge_pieces.remove(best_piece)
+        bottom_frame.append(best_piece)
+        ec1 = best_piece.edge_codes[3]
+        bottom_frame_end = best_piece.is_corner
+
+    for i, p in enumerate(bottom_frame):
+        board[-1][width - (i + 2)] = p
+
+    # rotate all edge_pieces with rim to left
+    for ep in edge_pieces:
+        while not ep.rims[3]:
+            ep.rotate()
+        if ep.is_corner:
+            while not (ep.rims[0] and ep.rims[3]):
+                ep.rotate()
+
+    ec1 = bottom_frame[-1].edge_codes[0]
+    left_frame = []
+    left_frame_end = False
+    # get best edge piece to connect
+    while not left_frame_end:
+        best_piece = edge_pieces[0]
+        delta = 100_000
+        for ep in edge_pieces:
+            if not type_match(ec1, ep.edge_codes[2]):
+                continue
+            delta_i = delta_match(ec1, ep.edge_codes[2])
+            if delta_i < delta:
+                delta = delta_i
+                best_piece = ep
+        edge_pieces.remove(best_piece)
+        left_frame.append(best_piece)
+        ec1 = best_piece.edge_codes[0]
+        # left_frame_end = delta_match(ec1, top_frame[0].edge_codes[2]) < best_piece.max_tolerance
+        left_frame_end = len(edge_pieces) == 0
+    print(f"delta left frame to top frame: {delta_match(ec1, top_frame[0].edge_codes[2])}")
+    for i, p in enumerate(left_frame):
+        board[height - 2 - i][0] = p
+
+    print("frame completed")
+
+    for row in board:
+        print(row)
+
+    print()
+
+
 if __name__ == '__main__':
-    main(puzzle_file="puzzle_pieces.txt")
+    # main(puzzle_file="puzzle_pieces.txt")
+    main2(puzzle_file="puzzle_pieces.txt")
