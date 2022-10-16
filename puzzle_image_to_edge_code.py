@@ -11,24 +11,21 @@
 
 
 import numpy as np
-import math
-import os
 import matplotlib.pyplot as plt
 import cv2.cv2 as cv2
 import time
 import puzzle_utils as pu
 
-# import matplotlib
-# matplotlib.use('Qt5Agg')
 
 DRAW = True
 # DRAW = False
-SHOW = True
-# SHOW = False
+# SHOW = True
+SHOW = False
 RESOLUTION = 1_000
 SIDE_COLOR = {0: (255, 0, 0), 1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 255, 0), "V": (128, 128, 128)}
 BOW_COLOR = {1: 255, -1: 0}
 SIDES = [0, 1, 2, 3]  # index of edges top, right, down, left
+CORNER_OFFSET_CORRECTION = 10
 EC_STD_VEC = {1: np.array([-RESOLUTION, 0]), -1: np.array([RESOLUTION, 0]), 0: np.array([RESOLUTION, 0])}
 
 
@@ -42,28 +39,18 @@ def plot_to_pdf(images_list):
     for i, img in enumerate(images_list):
         plt.subplot(plots, 4, i + 1)
         plt.imshow(img, cmap="binary")
-
+    # how to safe as multipage file?
     plt.savefig("puzzle_image_analysis.pdf")
     # plt.show()
-
-
-# def polygon_to_lines(polygon):
-#     polygon_1 = polygon[1:] + polygon[:1]
-#     lines = []
-#     for i, p in enumerate(polygon):
-#         lines.append([p, polygon_1[i]])
-#     return lines
 
 
 def get_line_coordinates(line, img):
     # line: points x,y
     line = np.int0(line)
     img_tmp = img.astype(np.uint8)
-    # print(f"shape: {img_tmp.shape} imgid: {id(img)} tmpid {id(img_tmp)} dtype {img_tmp.dtype}")
     cv2.line(img_tmp, line[0], line[1], 128, 1)
-    # plt.imshow(img_tmp, cmap="Greys_r")
-    # plt.show()
     coords_yx = np.argwhere(img_tmp == 128)  # to use in np and img as row=y, column=x
+    coords_yx = coords_yx[coords_yx[:, 1].argsort()]
     coords_xy = np.array([[x, y] for y, x in coords_yx])  # to use in points and cv2 as x, y
     return coords_xy, coords_yx
 
@@ -100,7 +87,9 @@ def find_max_dist_of_color(p0, p1, img_bw, vec, col):
     size_max = 0
     p2, p3 = p0, p1
     coordinates_xy, _ = get_line_coordinates([p0, p1], img_bw)
-    for p in coordinates_xy:
+    # if corner is overhanging, "inner bow" will start at corner not in the middle. sort coordinates
+    #  and exclude some pixels away from corner
+    for p in coordinates_xy[20:-20]:
         q1 = p
         q1_float = q1
         last_q1 = q1
@@ -134,22 +123,6 @@ def draw_edge_points(edge, img_marked):
     return img_marked
 
 
-# def draw_corners_on_img(img, corners):
-#     # draw rgb-lines on bw_image
-#     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-#
-#     for c in corners:
-#         cv2.circle(img, *c, 10, SIDE_COLOR[side], -1)
-#
-#     plt.imshow(img, cmap="Greys_r")
-#     plt.show()
-
-
-# def angle_to_side_vector(p0, p1, side_unit_vec):
-#     v1_u = unit_vector(p0, p1)
-#     return np.arccos(np.clip(np.dot(v1_u, side_unit_vec), -1.0, 1.0)), True
-
-
 def rot_mat_2D(theta, clockwise):
     # theta in radiant
     # rotation anti-clockwise
@@ -180,7 +153,6 @@ def rotate_img_to_side(img_bw, corners, side):
 
     corners_new = corners
     if side:
-        # todo use correct img_rot or which?
         corners_new = rotate_corners(corners, img_rot.shape[1])
         # re-order corners: corner[0] = bottom_right
         corners_new = corners_new[-1:] + corners_new[:-1]
@@ -286,6 +258,18 @@ def show_corners(img, corners):
     plt.show()
 
 
+def refine_corners(corners):
+    corners[0][0] += CORNER_OFFSET_CORRECTION
+    corners[0][1] += CORNER_OFFSET_CORRECTION
+    corners[1][0] += CORNER_OFFSET_CORRECTION
+    corners[1][1] -= CORNER_OFFSET_CORRECTION
+    corners[2][0] -= CORNER_OFFSET_CORRECTION
+    corners[2][1] -= CORNER_OFFSET_CORRECTION
+    corners[3][0] -= CORNER_OFFSET_CORRECTION
+    corners[3][1] += CORNER_OFFSET_CORRECTION
+    return corners
+
+
 if __name__ == '__main__':
     start_time = time.perf_counter()
 
@@ -299,6 +283,9 @@ if __name__ == '__main__':
         pieces.append(" ".join([str(f_idx), f[:-4]]))
 
         corners, img_bw, img_marked = pu.find_corners(PATH + f)
+        # refine corners for better fit.
+        corners = refine_corners(corners)
+
         if SHOW:
             show_corners(img_bw, corners)
 

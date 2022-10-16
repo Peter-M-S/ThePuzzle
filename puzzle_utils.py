@@ -1,6 +1,6 @@
-import cv2.cv2 as cv2
-import sys
 import os
+
+import cv2.cv2 as cv2
 import numpy as np
 
 feature_params = dict(maxCorners=4,
@@ -32,9 +32,7 @@ def convert_to_list(corners):
 def points_to_quad(point_list):
     n = len(point_list)
     x_c, y_c = (sum(x[0] for x in point_list) / n, sum(y[1] for y in point_list) / n)
-
     ordered_point_list = point_list[:]
-
     for x, y in point_list:
         if x >= x_c and y > y_c:
             quad = 0
@@ -45,7 +43,6 @@ def points_to_quad(point_list):
         else:
             quad = 3
         ordered_point_list[quad] = [x, y]
-
     return ordered_point_list
 
 
