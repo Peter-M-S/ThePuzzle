@@ -74,4 +74,4 @@ def main(rows, cols, edge_code_length, fuzzy):
 
 if __name__ == '__main__':
     random.seed(1000)
-    main(rows=4, cols=6, edge_code_length=7, fuzzy=100)
+    main(rows=60, cols=90, edge_code_length=7, fuzzy=10)

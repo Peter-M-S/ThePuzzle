@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 SIDES = [0, 1, 2, 3]
 
@@ -342,4 +343,6 @@ def main_iterative(puzzle_file):
 
 
 if __name__ == '__main__':
+    start_time = time.perf_counter()
     main_iterative(puzzle_file="puzzle_pieces.txt")
+    print(time.perf_counter()-start_time)
