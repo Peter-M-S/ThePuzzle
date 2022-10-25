@@ -26,8 +26,7 @@
 <p>
   Matching of two edges is tested by check the sum of edges information for 0 or minimum value, e.g. the best candidate for a match is the one with the least value of the sum.
   <br>
-  Rim edges and bows pointing in the same direction are skipped before this check.  
-  
+  Rim edges and bows pointing in the same direction are skipped before this check.
 </p>
 
 <p>
@@ -39,3 +38,7 @@
   with creator 60x90, fuzzy=10 - OK and ca. 400 sec<br>
 </p>
 
+<p>
+    Any comments on improvements wellcome, especially how to manage the recursive approach which seems to be 
+    more computerstylish than just mocking human behaviour as in my iterative approach.
+</p>
