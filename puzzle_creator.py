@@ -26,7 +26,7 @@ def main(rows, cols, edge_code_length, fuzzy):
     if fuzzy:
         for edge_code in edge_codes:
             for i in range(len(edge_code[1:])):
-                edge_code[i+1] += random.randint(-fuzzy, fuzzy)
+                edge_code[i + 1] += random.randint(-fuzzy, fuzzy)
 
     # print(counter_edge_codes)
 
@@ -70,23 +70,6 @@ def main(rows, cols, edge_code_length, fuzzy):
             for p_line in p[0]:
                 f.write(" ".join([str(n) for n in p_line]) + "\n")
             f.write("\n")
-
-    # create dict pairing box_idx: (piece_idx, rotation)
-    # box_dict = {key: val[1] for key, val in enumerate(puzzle_box)}
-
-    # reduce puzzle box to pieces only
-    # puzzle_box = [val[0] for val in puzzle_box]
-    # # print(puzzle_box)
-    #
-    # # create text file with shuffled and rotated pieces
-    # with open(f"puzzle_box.txt", "w") as f:
-    #     # f.write(f"edge_code_type: {edge_code_type}\n")
-    #     for i, piece in enumerate(puzzle_box):
-    #         f.write("\n".join([str(n) for n in piece]) + "\n\n")
-
-    # create text file with shuffled and rotated pieces
-    # with open(f"puzzle_box_dict_ecl{edge_code_length}.txt", "w") as f:
-    #     f.write(f"{box_dict}")
 
 
 if __name__ == '__main__':
